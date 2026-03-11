@@ -124,11 +124,12 @@ class MJCFLogger:
         self.paths = MJCFLogPaths(entity_path_prefix)
         self._body_geoms = _build_body_geoms(self.model)
 
-    def _get_albedo_factor(self) -> list[float] | None:
-        """Get albedo factor for transparency if opacity is set."""
+    def _get_albedo_factor(self, rgba: npt.NDArray[np.float32] | None = None) -> list[float] | None:
+        """Get albedo_factor for color updates, applying opacity if set."""
         if self.opacity is None:
-            return None
-        return [1.0, 1.0, 1.0, self.opacity]
+            return rgba
+        rgb = rgba[:3] if rgba is not None else [1.0, 1.0, 1.0]
+        return [*rgb, self.opacity]
 
     def log_model(
         self,
@@ -455,12 +456,11 @@ class MJCFLogger:
                 recording=recording,
             )
         # Log albedo_factor separately as time-varying (allows set_body_color updates)
-        if self.opacity is not None:
-            rr.log(
-                entity_path,
-                rr.Mesh3D.from_fields(albedo_factor=self._get_albedo_factor()),
-                recording=recording,
-            )
+        rr.log(
+            entity_path,
+            rr.Mesh3D.from_fields(albedo_factor=self._get_albedo_factor(rgba)),
+            recording=recording,
+        )
 
     def _log_box_geom(
         self,
