@@ -589,12 +589,11 @@ class MJCFLogger:
                 recording=recording,
             )
         # Log albedo_factor separately as time-varying (allows set_body_color updates)
-        if self.opacity is not None:
-            rr.log(
-                entity_path,
-                rr.Mesh3D.from_fields(albedo_factor=self._get_albedo_factor()),
-                recording=recording,
-            )
+        rr.log(
+            entity_path,
+            rr.Mesh3D.from_fields(albedo_factor=self._get_albedo_factor(rgba)),
+            recording=recording,
+        )
 
     def _log_primitive_geom(
         self,
