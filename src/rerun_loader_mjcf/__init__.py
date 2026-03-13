@@ -15,10 +15,7 @@ if TYPE_CHECKING:
 _MJCF_NO_ID = -1
 # Multiplier for plane extent when size is not specified (affects number of tiles)
 _PLANE_EXTENT_MULTIPLIER = 1.0
-# MuJoCo collision class convention (Menagerie style)
-_VISUAL_CONTYPE = 0
-_VISUAL_CONAFFINITY = 0
-_COLLISION_GROUP = 3
+
 # MuJoCo's checker texture has 2x2 squares per UV tile
 _CHECKER_TILES_PER_UV = 2
 # UV offset matching MuJoCo's glTexGenfv: S = 0.5*scl*X - 0.5, T = -0.5*scl*Y - 0.5
@@ -59,9 +56,9 @@ def _geom_name(geom: mujoco.MjsGeom) -> str:
 def _is_visual_geom(geom: mujoco.MjsGeom) -> bool:
     """Check if geom is visual-only (not for collision)."""
     return (
-        geom.contype.item() == _VISUAL_CONTYPE
-        and geom.conaffinity.item() == _VISUAL_CONAFFINITY
-    ) and (geom.group.item() != _COLLISION_GROUP)
+        geom.contype.item() == MJCFLogger._VISUAL_CONTYPE
+        and geom.conaffinity.item() == MJCFLogger._VISUAL_CONAFFINITY
+    ) and (geom.group.item() != MJCFLogger._COLLISION_GROUP)
 
 
 def _build_body_geoms(model: mujoco.MjModel) -> dict[int, tuple[list, list]]:
@@ -106,6 +103,11 @@ class MJCFLogPaths:
 
 class MJCFLogger:
     """Class to log a MJCF model to Rerun."""
+
+    # MuJoCo collision class convention (Menagerie style)
+    _VISUAL_CONTYPE = 0
+    _VISUAL_CONAFFINITY = 0
+    _COLLISION_GROUP = 3
 
     def __init__(
         self,
@@ -152,8 +154,8 @@ class MJCFLogger:
             body_frame = self.paths.body_frame(body_name)
             visual_geoms, collision_geoms = self._body_geoms[body_id]
 
-            # Visual geometries (fall back to collision if no visual)
-            for geom in visual_geoms or collision_geoms:
+            # Visual geometries
+            for geom in visual_geoms:
                 geom_name = _geom_name(geom)
                 entity_path = f"{self.paths.visual_root}/{body_name}/{geom_name}"
                 self._log_geom_with_frame(entity_path, geom, body_frame, recording)
