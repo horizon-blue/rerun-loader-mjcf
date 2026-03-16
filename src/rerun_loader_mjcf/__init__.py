@@ -23,6 +23,11 @@ _UV_CENTER_OFFSET = -0.5
 # RGBA color range
 _RGBA_MAX = 255
 
+# MuJoCo collision class convention (Menagerie style)
+_VISUAL_CONTYPE = 0
+_VISUAL_CONAFFINITY = 0
+_DEFAULT_COLLISION_GROUP = 3
+
 # Rerun implicit frame prefix: "tf#/path" references Transform3D at that entity as a frame.
 #
 # We use tf# implicit frames instead of URDF-style named frames (child_frame/parent_frame)
@@ -51,25 +56,6 @@ def _body_name(body: mujoco.MjsBody) -> str:
 def _geom_name(geom: mujoco.MjsGeom) -> str:
     """Get geom name, defaulting to geom_{id} if unnamed."""
     return geom.name if geom.name else f"geom_{geom.id}"
-
-
-def _is_visual_geom(geom: mujoco.MjsGeom) -> bool:
-    """Check if geom is visual."""
-    return geom.group.item() != MJCFLogger._COLLISION_GROUP
-
-
-def _build_body_geoms(model: mujoco.MjModel) -> dict[int, tuple[list, list]]:
-    """Build mapping of body_id -> (visual_geoms, collision_geoms)."""
-    visual: dict[int, list] = {i: [] for i in range(model.nbody)}
-    collision: dict[int, list] = {i: [] for i in range(model.nbody)}
-    for geom_id in range(model.ngeom):
-        geom = model.geom(geom_id)
-        body_id = geom.bodyid.item()
-        if _is_visual_geom(geom):
-            visual[body_id].append(geom)
-        else:
-            collision[body_id].append(geom)
-    return {i: (visual[i], collision[i]) for i in range(model.nbody)}
 
 
 @dataclasses.dataclass
@@ -101,17 +87,13 @@ class MJCFLogPaths:
 class MJCFLogger:
     """Class to log a MJCF model to Rerun."""
 
-    # MuJoCo collision class convention (Menagerie style)
-    _VISUAL_CONTYPE = 0
-    _VISUAL_CONAFFINITY = 0
-    _COLLISION_GROUP = 3
-
     def __init__(
         self,
         model_or_path: str | pathlib.Path | mujoco.MjModel,
         entity_path_prefix: str = "",
         opacity: float | None = None,
         log_collision: bool = False,
+        collision_group: int = _DEFAULT_COLLISION_GROUP,
     ) -> None:
         self.model: mujoco.MjModel = (
             model_or_path
@@ -121,9 +103,29 @@ class MJCFLogger:
         self.opacity = opacity
         self.log_collision = log_collision
         self.paths = MJCFLogPaths(entity_path_prefix)
-        self._body_geoms = _build_body_geoms(self.model)
+        self.collision_group = collision_group
+        self._body_geoms = self._build_body_geoms(self.model)
 
-    def _get_albedo_factor(self, rgba: npt.NDArray[np.float32] | None = None) -> list[float] | None:
+    def _is_visual_geom(self, geom: mujoco.MjsGeom) -> bool:
+        """Check if geom is visual."""
+        return geom.group.item() != self.collision_group
+
+    def _build_body_geoms(self, model: mujoco.MjModel) -> dict[int, tuple[list, list]]:
+        """Build mapping of body_id -> (visual_geoms, collision_geoms)."""
+        visual: dict[int, list] = {i: [] for i in range(model.nbody)}
+        collision: dict[int, list] = {i: [] for i in range(model.nbody)}
+        for geom_id in range(model.ngeom):
+            geom = model.geom(geom_id)
+            body_id = geom.bodyid.item()
+            if self._is_visual_geom(geom):
+                visual[body_id].append(geom)
+            else:
+                collision[body_id].append(geom)
+        return {i: (visual[i], collision[i]) for i in range(model.nbody)}
+
+    def _get_albedo_factor(
+        self, rgba: npt.NDArray[np.float32] | None = None
+    ) -> list[float] | None:
         """Get albedo_factor for color updates, applying opacity if set."""
         if self.opacity is None:
             return rgba
