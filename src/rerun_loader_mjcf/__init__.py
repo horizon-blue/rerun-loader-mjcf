@@ -54,11 +54,8 @@ def _geom_name(geom: mujoco.MjsGeom) -> str:
 
 
 def _is_visual_geom(geom: mujoco.MjsGeom) -> bool:
-    """Check if geom is visual-only (not for collision)."""
-    return (
-        geom.contype.item() == MJCFLogger._VISUAL_CONTYPE
-        and geom.conaffinity.item() == MJCFLogger._VISUAL_CONAFFINITY
-    ) and (geom.group.item() != MJCFLogger._COLLISION_GROUP)
+    """Check if geom is visual."""
+    return geom.group.item() != MJCFLogger._COLLISION_GROUP
 
 
 def _build_body_geoms(model: mujoco.MjModel) -> dict[int, tuple[list, list]]:
