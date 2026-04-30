@@ -456,6 +456,8 @@ class MJCFLogger:
                 static=True,
                 recording=recording,
             )
+            # Reset RGBA since we already use it to color the vertex
+            rgba = np.ones(4)
         # Log albedo_factor separately as time-varying (allows set_body_color updates)
         rr.log(
             entity_path,
@@ -587,6 +589,8 @@ class MJCFLogger:
                 static=True,
                 recording=recording,
             )
+            # Reset RGBA since we already use it to color the vertex
+            rgba = np.ones(4)
         # Log albedo_factor separately as time-varying (allows set_body_color updates)
         rr.log(
             entity_path,
